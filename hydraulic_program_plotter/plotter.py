@@ -19,8 +19,8 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     max_discrete = max(discrete_levels)
 
     # Add shaded regions for invalid flow levels
-    fig.add_hrect(y0=max_discrete, y1=max_discrete + 10, fillcolor="lightgray", opacity=0.3, layer="below", line_width=0)
-    fig.add_hrect(y0=min_discrete - 10, y1=min_discrete, fillcolor="lightgray", opacity=0.3, layer="below", line_width=0)
+    fig.add_hrect(y0=max_discrete, y1=max_discrete + 10, fillcolor="lightcoral", opacity=0.5, layer="below", line_width=0)
+    fig.add_hrect(y0=min_discrete - 10, y1=min_discrete, fillcolor="lightcoral", opacity=0.5, layer="below", line_width=0)
 
     # Add the discrete flow levels as horizontal lines
     for level in discrete_levels:
@@ -31,68 +31,44 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
             x1=n_timesteps,
             y1=level,
             line=dict(
-                color='red',
+                color='gray',
                 width=2,
                 dash='dash'
             )
         )
 
-    # Segment the program into valid and invalid parts for coloring
-    segments = []
-    current_x = []
-    current_y = []
-    current_color = None
-    discrete_set = set(discrete_levels)
+    # Add vertical lines to distinguish time steps
+    for i in range(1, n_timesteps):
+        fig.add_vline(x=i, line_width=1, line_dash="dash", line_color="lightgrey")
 
-    for i in range(n_timesteps):
-        y = unit_program[i]
-        is_valid = y in discrete_set
-        color = 'blue' if is_valid else 'red'
-
-        if current_color is None:
-            current_color = color
-
-        if color != current_color:
-            current_x.append(i)
-            current_y.append(y)
-            segments.append({'x': current_x, 'y': current_y, 'color': current_color})
-
-            current_x = [i]
-            current_y = [y]
-            current_color = color
-        else:
-            current_x.append(i)
-            current_y.append(y)
-
-    # Add the last segment
-    current_x.append(n_timesteps)
-    current_y.append(unit_program[-1])
-    segments.append({'x': current_x, 'y': current_y, 'color': current_color})
-
-    # Add traces for each segment
-    for i, seg in enumerate(segments):
-        fig.add_trace(go.Scatter(
-            x=seg['x'],
-            y=seg['y'],
-            mode='lines',
-            line_shape='hv',
-            line=dict(width=4, color=seg['color']),
-            name='Unit Program' if i == 0 else '',
-            showlegend= i == 0
-        ))
+    # Add the unit program as a single trace
+    x_values = list(range(n_timesteps + 1))
+    y_values = list(unit_program) + [unit_program[-1]]
+    fig.add_trace(go.Scatter(
+        x=x_values,
+        y=y_values,
+        mode='lines',
+        line_shape='hv',
+        line=dict(width=4, color='blue'),
+        name='Unit Program'
+    ))
 
     fig.update_layout(
         title='Hydraulic Unit Program',
         xaxis_title='Time Step',
         yaxis_title='Water Flow (m^3/s)',
-        showlegend=False,
+        showlegend=True,
         xaxis=dict(
-            tickmode='linear',
-            tick0=0,
-            dtick=1,
-            minor=dict(
-                ticklen=6,
-            )
+            tickmode='array',
+            tickvals=list(range(1, n_timesteps + 1)),
+            ticktext=[str(i) for i in range(1, n_timesteps + 1)]
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
         )
     )
 
