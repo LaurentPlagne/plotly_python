@@ -15,12 +15,21 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     """
     fig = go.Figure()
 
+    # Prepare data for horizontal steps
+    x_coords = []
+    y_coords = []
+    for i in range(n_timesteps):
+        x_coords.extend([i, i + 1])
+        y_coords.extend([unit_program[i], unit_program[i]])
+        if i < n_timesteps - 1:
+            x_coords.append(None)
+            y_coords.append(None)
+
     # Add the unit program as a step chart
     fig.add_trace(go.Scatter(
-        x=np.arange(n_timesteps),
-        y=unit_program,
+        x=x_coords,
+        y=y_coords,
         mode='lines+markers',
-        line_shape='h',
         name='Unit Program'
     ))
 
@@ -30,7 +39,7 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
             type='line',
             x0=0,
             y0=level,
-            x1=n_timesteps - 1,
+            x1=n_timesteps,
             y1=level,
             line=dict(
                 color='red',
@@ -47,3 +56,12 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     )
 
     return fig
+
+if __name__ == '__main__':
+    # Example Usage
+    n_timesteps = 24
+    unit_program = [10, 10, 20, 30, 30, 30, 20, 20, 10, 10, 10, 0, 0, 0, 0, 10, 20, 30, 40, 40, 40, 30, 20, 10]
+    discrete_levels = [0, 10, 20, 30, 40]
+
+    fig = plot_unit_program(unit_program, discrete_levels, n_timesteps)
+    fig.write_html("hydraulic_unit_program.html")
