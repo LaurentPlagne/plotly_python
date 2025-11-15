@@ -15,20 +15,51 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     """
     fig = go.Figure()
 
-    min_discrete = min(discrete_levels)
-    max_discrete = max(discrete_levels)
+    # Determine the lower and upper bounds for the valid region
+    sorted_discrete = np.sort(discrete_levels)
+    min_bound = []
+    max_bound = []
 
-    # Add shaded regions for invalid flow levels
-    fig.add_hrect(y0=max_discrete, y1=max_discrete + 10, fillcolor="lightcoral", opacity=0.5, layer="below", line_width=0)
-    fig.add_hrect(y0=min_discrete - 10, y1=min_discrete, fillcolor="lightcoral", opacity=0.5, layer="below", line_width=0)
+    for val in unit_program:
+        # Find the largest discrete level <= val
+        lower = sorted_discrete[sorted_discrete <= val]
+        min_bound.append(lower[-1] if len(lower) > 0 else sorted_discrete[0])
+
+        # Find the smallest discrete level >= val
+        upper = sorted_discrete[sorted_discrete >= val]
+        max_bound.append(upper[0] if len(upper) > 0 else sorted_discrete[-1])
+
+    x_fill = list(range(1, n_timesteps + 1))
+
+    # Add the lower invalid region
+    fig.add_trace(go.Scatter(
+        x=x_fill + x_fill[::-1],
+        y=[min(discrete_levels)] * n_timesteps + min_bound[::-1],
+        fill='toself',
+        fillcolor='darkgray',
+        line=dict(color='darkgray'),
+        name='Invalid Region',
+        showlegend=False
+    ))
+
+    # Add the upper invalid region
+    fig.add_trace(go.Scatter(
+        x=x_fill + x_fill[::-1],
+        y=[max(discrete_levels) + 10] * n_timesteps + max_bound[::-1],
+        fill='toself',
+        fillcolor='darkgray',
+        line=dict(color='darkgray'),
+        showlegend=False,
+        name='Invalid Region'
+    ))
 
     # Add the discrete flow levels as horizontal lines
     for level in discrete_levels:
         fig.add_shape(
             type='line',
-            x0=0,
+            x0=1,
             y0=level,
-            x1=n_timesteps,
+            x1=n_timesteps + 1,
             y1=level,
             line=dict(
                 color='gray',
@@ -38,11 +69,11 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
         )
 
     # Add vertical lines to distinguish time steps
-    for i in range(1, n_timesteps):
+    for i in range(2, n_timesteps + 1):
         fig.add_vline(x=i, line_width=1, line_dash="dash", line_color="lightgrey")
 
     # Add the unit program as a single trace
-    x_values = list(range(n_timesteps + 1))
+    x_values = list(range(1, n_timesteps + 2))
     y_values = list(unit_program) + [unit_program[-1]]
     fig.add_trace(go.Scatter(
         x=x_values,
