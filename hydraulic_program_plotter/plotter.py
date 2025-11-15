@@ -19,8 +19,8 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     fig.add_trace(go.Scatter(
         x=np.arange(n_timesteps),
         y=unit_program,
-        mode='lines',
-        line_shape='hv',
+        mode='lines+markers',
+        line_shape='h',
         name='Unit Program'
     ))
 
@@ -38,20 +38,12 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps):
                 dash='dash'
             )
         )
-        fig.add_trace(go.Scatter(
-        x=[None],
-        y=[None],
-        mode='lines',
-        line=dict(color='red', width=2, dash='dash'),
-        name=f'Discrete Level {level}'
-    ))
-
 
     fig.update_layout(
         title='Hydraulic Unit Program',
         xaxis_title='Time Step',
         yaxis_title='Water Flow (m^3/s)',
-        showlegend=True
+        showlegend=False
     )
 
     return fig
