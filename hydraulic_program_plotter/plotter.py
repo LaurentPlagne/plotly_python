@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 import numpy as np
 
-def plot_unit_program(unit_program, discrete_levels, n_timesteps, forbidden_levels=None):
+def plot_unit_program(unit_program, discrete_levels, n_timesteps):
     """
     Generates a plot of the unit program and discrete flow levels.
 
@@ -9,32 +9,18 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps, forbidden_leve
         unit_program (list or np.ndarray): A series of flow levels for each time step.
         discrete_levels (list or np.ndarray): The discrete flow levels of the unit.
         n_timesteps (int): The number of time steps.
-        forbidden_levels (dict, optional): A dictionary where keys are time steps and
-                                           values are lists of forbidden flow levels.
-                                           Defaults to None.
+
     Returns:
         go.Figure: The Plotly figure object.
     """
     fig = go.Figure()
 
-    # Prepare data for horizontal steps
-    x_coords = []
-    y_coords = []
-    for i in range(n_timesteps):
-        x_coords.extend([i, i + 1])
-        y_coords.extend([unit_program[i], unit_program[i]])
-        if i < n_timesteps - 1:
-            x_coords.append(None)
-            y_coords.append(None)
+    min_discrete = min(discrete_levels)
+    max_discrete = max(discrete_levels)
 
-    # Add the unit program as a step chart with a thicker line
-    fig.add_trace(go.Scatter(
-        x=x_coords,
-        y=y_coords,
-        mode='lines+markers',
-        name='Unit Program',
-        line=dict(width=4)  # Make the line thicker
-    ))
+    # Add shaded regions for invalid flow levels
+    fig.add_hrect(y0=max_discrete, y1=max_discrete + 10, fillcolor="lightgray", opacity=0.3, layer="below", line_width=0)
+    fig.add_hrect(y0=min_discrete - 10, y1=min_discrete, fillcolor="lightgray", opacity=0.3, layer="below", line_width=0)
 
     # Add the discrete flow levels as horizontal lines
     for level in discrete_levels:
@@ -51,26 +37,48 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps, forbidden_leve
             )
         )
 
-    # Add markers for forbidden levels
-    if forbidden_levels:
-        forbidden_x = []
-        forbidden_y = []
-        for timestep, levels in forbidden_levels.items():
-            for level in levels:
-                # Place the marker in the middle of the time step
-                forbidden_x.append(timestep + 0.5)
-                forbidden_y.append(level)
+    # Segment the program into valid and invalid parts for coloring
+    segments = []
+    current_x = []
+    current_y = []
+    current_color = None
+    discrete_set = set(discrete_levels)
 
+    for i in range(n_timesteps):
+        y = unit_program[i]
+        is_valid = y in discrete_set
+        color = 'blue' if is_valid else 'red'
+
+        if current_color is None:
+            current_color = color
+
+        if color != current_color:
+            current_x.append(i)
+            current_y.append(y)
+            segments.append({'x': current_x, 'y': current_y, 'color': current_color})
+
+            current_x = [i]
+            current_y = [y]
+            current_color = color
+        else:
+            current_x.append(i)
+            current_y.append(y)
+
+    # Add the last segment
+    current_x.append(n_timesteps)
+    current_y.append(unit_program[-1])
+    segments.append({'x': current_x, 'y': current_y, 'color': current_color})
+
+    # Add traces for each segment
+    for i, seg in enumerate(segments):
         fig.add_trace(go.Scatter(
-            x=forbidden_x,
-            y=forbidden_y,
-            mode='markers',
-            name='Forbidden Level',
-            marker=dict(
-                color='red',
-                symbol='x',
-                size=10
-            )
+            x=seg['x'],
+            y=seg['y'],
+            mode='lines',
+            line_shape='hv',
+            line=dict(width=4, color=seg['color']),
+            name='Unit Program' if i == 0 else '',
+            showlegend= i == 0
         ))
 
     fig.update_layout(
@@ -92,16 +100,10 @@ def plot_unit_program(unit_program, discrete_levels, n_timesteps, forbidden_leve
 
 if __name__ == '__main__':
     # Example Usage
-    n_timesteps = 24
+    n_timesteps = 96
     # Include a non-discrete value (e.g., 25)
-    unit_program = [10, 10, 20, 30, 30, 30, 20, 25, 10, 10, 10, 0, 0, 0, 0, 10, 20, 30, 40, 40, 40, 30, 20, 10]
-    discrete_levels = [0, 10, 20, 30, 40]
-    # Define forbidden levels for specific time steps
-    forbidden_levels = {
-        1: [20, 30],
-        2: [0, 10],
-        7: [0, 10, 20, 30, 40]
-    }
+    unit_program = [10, 10, 20, 30, 30, 30, 20, 25, 10, 10, 10, 0, 0, 0, 0, 10, 20, 30, 40, 40, 40, 30, 20, 10] * 4
+    discrete_levels = [0, 10, 22, 35, 40]
 
-    fig = plot_unit_program(unit_program, discrete_levels, n_timesteps, forbidden_levels)
+    fig = plot_unit_program(unit_program, discrete_levels, n_timesteps)
     fig.write_html("hydraulic_unit_program.html")
